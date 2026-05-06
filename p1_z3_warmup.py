@@ -15,8 +15,10 @@ def part_a():
     x, y, z = Ints('x y z')
     s = Solver()
 
-    # TODO: Add constraints
-    # s.add(...)
+    s.add(x + 2 * y == z)
+    s.add(z > 10)
+    s.add(x > 0)
+    s.add(y > 0)
 
     print("=== Part (a) ===")
     if s.check() == sat:
@@ -36,8 +38,9 @@ def part_b():
     x = Int('x')
     s = Solver()
 
-    # TODO: Add the *negation* of the formula and check UNSAT
-    # s.add(...)
+    # Negate: ∃x. x > 5 ∧ ¬(x > 3)
+    s.add(x > 5)
+    s.add(Not(x > 3))
 
     print("=== Part (b) ===")
     result = s.check()
@@ -67,8 +70,9 @@ def part_c():
     f = Function('f', S, S)
     s = Solver()
 
-    # TODO: Add the three constraints
-    # s.add(...)
+    s.add(f(f(x)) == x)
+    s.add(f(f(f(x))) == x)
+    s.add(f(x) != x)
 
     print("=== Part (c) ===")
     result = s.check()
@@ -76,7 +80,34 @@ def part_c():
         print(f"SAT: {s.model()}")
     else:
         print("UNSAT")
-    # TODO: Add Z3 derivation steps below (see STEP 2 above).
+
+    # Derivation: why is this UNSAT?
+    # From f(f(x)) = x, apply f to both sides: f(f(f(x))) = f(x).
+    # But we also have f(f(f(x))) = x.
+    # So f(x) = x. This contradicts f(x) ≠ x.
+
+    # Step 1: From f(f(x)) = x, prove f(f(f(x))) = f(x)
+    s1 = Solver()
+    s1.add(f(f(x)) == x)
+    s1.add(Not(f(f(f(x))) == f(x)))
+    r1 = s1.check()
+    print(f"Step 1: f(f(x)) = x → f(f(f(x))) = f(x)? {'Valid' if r1 == unsat else 'INVALID'}")
+
+    # Step 2: From f(f(f(x))) = x and f(f(f(x))) = f(x), prove f(x) = x
+    s2 = Solver()
+    s2.add(f(f(f(x))) == x)
+    s2.add(f(f(f(x))) == f(x))
+    s2.add(Not(f(x) == x))
+    r2 = s2.check()
+    print(f"Step 2: f(f(f(x))) = x ∧ f(f(f(x))) = f(x) → f(x) = x? {'Valid' if r2 == unsat else 'INVALID'}")
+
+    # Step 3: f(x) = x contradicts f(x) ≠ x, so the original is UNSAT
+    s3 = Solver()
+    s3.add(f(x) == x)
+    s3.add(f(x) != x)
+    r3 = s3.check()
+    print(f"Step 3: f(x) = x ∧ f(x) ≠ x is contradictory? {'Yes' if r3 == unsat else 'No'}")
+
     print()
 
 
@@ -98,17 +129,24 @@ def part_d():
 
     # Axiom 1: Read-over-write HIT
     s1 = Solver()
-    # TODO: Negate axiom 1 and check UNSAT
-    # s1.add(...)
+    # Negate: i = j ∧ Select(Store(a, i, v), j) ≠ v
+    s1.add(i == j)
+    s1.add(Select(Store(a, i, v), j) != v)
     r1 = s1.check()
     print(f"Axiom 1 (hit):  {'Valid' if r1 == unsat else 'INVALID'}")
 
     # Axiom 2: Read-over-write MISS
     s2 = Solver()
-    # TODO: Negate axiom 2 and check UNSAT
-    # s2.add(...)
+    # Negate: i ≠ j ∧ Select(Store(a, i, v), j) ≠ Select(a, j)
+    s2.add(i != j)
+    s2.add(Select(Store(a, i, v), j) != Select(a, j))
     r2 = s2.check()
     print(f"Axiom 2 (miss): {'Valid' if r2 == unsat else 'INVALID'}")
+
+    # [EXPLAIN] For any read after a write, the index either matches the written index
+    # or it doesn't - there's no third case. Axiom 1 handles the match (you get back
+    # what you stored), axiom 2 handles the mismatch (array is unchanged at other indices).
+    # So any Select(Store(...)) expression is fully determined by these two rules.
     print()
 
 
