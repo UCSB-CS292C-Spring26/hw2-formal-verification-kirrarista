@@ -43,7 +43,7 @@ OUTPUT_FILE = 1
 #   ∧ ∀p. p ≠ OUTPUT_FILE → Select(fs_final, p) = Select(fs_initial, p)
 #                                                                  [nothing else changed]
 #
-# TODO: Encode this as a Z3 validity check and verify it.
+# Encoded as a Z3 validity check below.
 # ============================================================================
 
 def verify_correct_composition():
@@ -76,17 +76,17 @@ def verify_correct_composition():
                             Select(fs_final, p) == Select(fs_initial, p)))
     )
 
-    # TODO: Check that (skill_A_post ∧ skill_B_post) → composed_post is valid.
-    # That is, check that the negation is UNSAT.
+    # Check that (skill_A_post ∧ skill_B_post) → composed_post is valid.
     s = Solver()
-    # s.add(skill_A_post)
-    # s.add(skill_B_post)
-    # s.add(Not(composed_post))
+    s.add(skill_A_post)
+    s.add(skill_B_post)
+    s.add(Not(composed_post))
 
-    # TODO: uncomment and check
-    # result = s.check()
-
-    print("  TODO: Implement verification")
+    result = s.check()
+    if result == unsat:
+        print("Correct composition: VERIFIED (no counterexample)")
+    else:
+        print(f"FAILED - counterexample: {s.model()}")
     print()
 
 
@@ -101,7 +101,7 @@ def verify_correct_composition():
 #
 # The composed postcondition should FAIL because the input file is modified.
 #
-# TODO: Encode this and show the counterexample.
+# Encoded below - shows the counterexample.
 # ============================================================================
 
 def verify_buggy_composition():
@@ -130,12 +130,23 @@ def verify_buggy_composition():
                             Select(fs_final, p) == Select(fs_initial, p)))
     )
 
-    # TODO: Check that the composed postcondition FAILS.
-    # Print the counterexample showing how the input file gets corrupted.
+    # Check that the composed postcondition FAILS with the buggy Skill B.
     s = Solver()
-    # s.add(...)
+    s.add(skill_A_post)
+    s.add(buggy_B_post)
+    s.add(Not(composed_post))
 
-    print("  TODO: Implement buggy verification")
+    result = s.check()
+    if result == sat:
+        m = s.model()
+        print("Buggy composition: VERIFICATION FAILED (as expected)")
+        print(f"Counterexample: {m}")
+        print(f"- input file initial content:  {m.eval(Select(fs_initial, INPUT_FILE))}")
+        print(f"- input file final content:    {m.eval(Select(fs_final, INPUT_FILE))}")
+        print(f"- result_content:              {m.eval(result_content)}")
+        print("→ Input file was overwritten by Skill B!")
+    else:
+        print("Unexpected: no counterexample found")
     print()
 
 
@@ -148,8 +159,11 @@ def verify_buggy_composition():
 # Cursor, Copilot, etc.) or from what you learned in class. What would a runtime monitor need to check to
 # prevent this class of bugs?
 
-# TODO: Write your explanation here as a comment.
-# ...
+# [EXPLAIN] I've seen this exact pattern in Claude Code: you ask it to read a config file
+# and then generate tests, and it sometimes writes the test output to the same path it just
+# read from, jumbling the original. Each step "succeeds" on its own: the read got the
+# data, the write produced a file - but the composition trashed the input. A runtime monitor
+# could prevent this by marking files read by earlier steps as read-only for later steps.
 # ============================================================================
 
 
